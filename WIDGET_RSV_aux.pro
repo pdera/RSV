@@ -2285,13 +2285,21 @@ end
     	if sel eq -1 then re=dialog_message('You have to select one of the solutions') else $
     	begin
     	; set Bravais lattice type
-    	widget_control, self.widgets.wid_droplist_0, set_droplist_select=Brav_types(strcompress(l[sel],/remove_all))
+    	; widget_control, self.widgets.wid_droplist_0, set_droplist_select=Brav_types(strcompress(l[sel],/remove_all))
 
     	print, 'Unit cell selected:', sel
-    	ab=cell_now_solution_n(sel+1)
+    	ab=cell_now_solution_n(sel+1, cellnowpath)
     	spawn, '%MYARG%'  , /LOG_OUTPUT
 
     	endelse
+		dirs = cellnowpath
+    	ub=ReadUBfrom_p4p(dirs+'1.p4p')
+    	lp= lp_from_ub(UB)
+    	symm=symcodes(li)
+    	tol=0.1
+    	optable1->select_indexable, ub, tol
+
+
 
 	  endif
 
