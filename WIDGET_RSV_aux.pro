@@ -2114,7 +2114,11 @@ end
           ; offer to read ub matrix from result p4p file
           ; louch a browser to pick up that result file
           spawn, cellnow, /noshell
-      endif else re=dialog_message('You need to copy cell_now.exe to RSV program directory')
+      ;endif else re=dialog_message('You need to copy cell_now.exe to RSV program directory')
+      endif else begin
+      	Re = dialog_message('Cell_now not found, Please select the cell_now executable',/information)
+      	cellNowLoc = dialog_pickfile (/READ,TITLE='Please select the cell_now executable')
+      endelse
     end
 
     'Launch XPREP':$
