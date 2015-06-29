@@ -1,3 +1,141 @@
+;+
+; Function:
+; cell_now_solution
+;
+; Purpose :
+; generate the command script to run cell_now seamlessly
+;-
+function cell_now_solution_n, n, cell_now_path
+;@common_datas
+;fl=cell_now_dir+'cell_now.exe'
+cell_now_path=cell_now_path+'\'
+fl=cell_now_path+'cell_now.exe'
+re=file_info(fl)
+if not(re.exists) then begin
+	Wid_cellnow_path_dlg
+endif
+
+
+;fl=cell_now_dir+'cell_now.exe'
+re=file_info(fl)
+if re.exists eq 1 then $
+begin
+
+
+; write to last_directory.txt
+;save_last_directories
+;dir='C:\Users\prze
+dir=cell_now_path
+fil=dir+'cell_now_commands.txt
+get_lun, ln
+openw, ln, fil
+printf, ln, 'xxx.p4p'
+printf, ln, 'xxx._cn'
+printf, ln, 'Enter'
+printf, ln, '10'
+printf, ln, '2 20'
+printf, ln, '0.25'
+a=string(n)
+b=STRCOMPRESS(a, /REMOVE_ALL)
+printf, ln,  b
+printf, ln, '0.25'
+printf, ln, 'A'
+printf, ln, '1.p4p'
+printf, ln, 'Q'
+close, ln
+free_lun, ln
+
+fil = dir+'run_cellnow.cmd'
+get_lun,ln
+openw, ln, fil
+printf, ln, '@ECHO OFF'
+printf, ln, 'SETLOCAL EnableExtensions EnableDelayedExpansion'
+printf, ln, 'REM script to automate indexing with cell_now'
+printf, ln, 'REM 2015-02-14 pd'
+printf, ln,  strmid(cell_now_path,0,2)
+printf, ln,  'cd "'+cell_now_path+'"'
+printf, ln, 'SET CELL="cell_now.exe"'
+printf, ln, 'SET COMM="'+cell_now_path+'cell_now_commands.txt"'
+printf, ln, 'SET PROJ=xxx.p4p'
+printf, ln, 'REM announce target'
+printf, ln, 'REM announce target'
+printf, ln, 'ECHO Processing %PROJ% ...'
+printf, ln, 'ECHO %CELL%'
+printf, ln, '%CELL% < %COMM%'
+printf, ln, 'REM done'
+printf, ln, 'ENDLOCAL'
+printf, ln, 'ECHO ON'
+close,ln
+free_lun, ln
+return, 0
+endif else return, -1
+end
+
+;--------------------------------
+pro read_cells_from_cellnow, lp, v, l, fom, cell_now_dir
+	@COMMON_DATAS
+   lp=fltarr(6)
+   lp0=fltarr(6)
+   V=0.0
+   L=''
+   V0=0.0
+   L0=''
+   fom= 0.0
+   fom0 = 0.0
+   ;dir='C:\Users\przemyslaw\Dropbox (UH Mineral Physics)\software\RSV_mSXD 2.5\'
+   dir = cell_now_dir
+   fil=dir+'xxx._cn'
+   get_lun, ln
+   openr, ln, fil
+   re=''
+   while strmid(re,0, 4) ne ' FOM' and not eof(ln) do $
+   begin
+    readf, ln, re
+    ;print, re
+   endwhile
+    readf, ln, re
+    ;print, re
+   ;--- reading cell parameters sets
+   readf, ln, re
+
+   for i=0, 5 do $
+   begin
+     lp[i]=strmid(re, 18+i*8,8)
+   endfor
+     FOM=strmid(re, 11,5)
+     V=strmid(re, 65,10)
+     L=strmid(re, 75,3)
+   num=1
+   while re ne '' and not eof(ln) do $
+   begin
+    lp=[[lp],[lp0]]
+    V=[V,V0]
+    fom=[fom,fom0]
+    L=[L,L0]
+    readf, ln, re
+    for i=0, 5 do lp[i, num]=strmid(re, 18+i*8,8)
+    V[num]=strmid(re, 65,10)
+    L[num]=strmid(re, 75,3)
+    fom[num]=strmid(re,11,5)
+    num=num+1
+   endwhile
+   close, ln
+   free_lun, ln
+    ;print, lp
+   ;print, size(lp)
+   lp=lp[*,0:num-2]
+   l=l[0:num-2]
+   v=v[0:num-2]
+   fom=fom[0:num-1]
+   print, lp
+   print, v
+   print, l
+   print, fom
+
+end
+
+
+
 function get_bravis_type
 COMMON BAse_bra, WID_BUTTON_P, WID_BUTTON_R, WID_BUTTON_I, WID_BUTTON_F, WID_BUTTON_A, WID_BUTTON_B, WID_BUTTON_C
 res_p=widget_info(WID_BUTTON_P, /button_set)
@@ -486,6 +624,7 @@ COMMON DC_controls
 COMMON pat, path
 COMMON status, nopeaktable
 COMMON ind_tol, WID_TEXT_indthr, WID_TEXT_PD1
+common uc_selection, sel, sel1, li, dl, lpss
 
  WIDGET_CONTROL, ev.id,  GET_UVALUE=uval
 
@@ -2101,7 +2240,69 @@ end
        endif else if f2[0] ne -1 then plot, a[f2], ss[f2],  thick=0, symsize=0.5, psym=6, background='FFFFFF'xl, color='0000FF'xl
     end
 
-    'CellNow':$
+	'CellNow':$
+	begin
+	  ;common uc_selection, sel, li
+	  ;common uc_selection, sel, sel1, li, dl, lpss
+      fn=optable1->save_p4p('xxx.p4p')
+      Re=dialog_message('Current peak table has been saved in file xxx.p4p',/information)
+      test=file_info('./cell_now.exe')
+
+      if test.exists eq 1 then $
+      begin
+          ; export current peak table as p4p file
+          ; advise about the name and location of this file
+          cellnowpath = file_dirname('./cell_now.exe')
+          cellnow = cellnowpath+'/cell_now,exe'
+
+          ; offer to read ub matrix from result p4p file
+          ; louch a browser to pick up that result file
+          spawn, cellnow, /noshell
+      ;endif else re=dialog_message('You need to copy cell_now.exe to RSV program directory')
+      endif else begin
+      		Re = dialog_message('Cell_now not found, Please select the cell_now executable',/information)
+      		cellnow = dialog_pickfile (/READ,TITLE='Please select the cell_now executable', Filter='*.exe')
+      		cellnowpath = file_dirname(cellnow)
+      endelse
+
+	  ab = cell_now_solution_n(1, cellnowpath)
+	  if ab eq 0 then $
+    	begin
+
+    	;dirs='C:\Users\przemyslaw\Dropbox (UH Mineral Physics)\software\RSV_mSXD 2.5\'
+		dirs=cellnowpath
+    	a=optable1->save_p4p(dirs+'xxx.p4p')
+    	text='MYARG="'+dirs+'run_cellnow.cmd"'
+    	SETENV, text
+    	spawn, '%MYARG%'  , /LOG_OUTPUT
+    	lps=fltarr(6)
+    	V=0.0
+    	L=''
+
+    	read_cells_from_cellnow, lps, v, l, fom, cellnowpath
+
+    	WID_cell_choices, lps, v, l, fom
+    	if sel eq -1 then re=dialog_message('You have to select one of the solutions') else $
+    	begin
+    	; set Bravais lattice type
+    	widget_control, self.widgets.wid_droplist_0, set_droplist_select=Brav_types(strcompress(l[sel],/remove_all))
+
+    	print, 'Unit cell selected:', sel
+    	ab=cell_now_solution_n(sel+1)
+    	spawn, '%MYARG%'  , /LOG_OUTPUT
+
+    	endelse
+
+	  endif
+
+
+
+	end
+
+
+
+
+    'CellNowTest':$
     begin
       fn=optable1->save_p4p('xxx.p4p')
       Re=dialog_message('Current peak table has been saved in file xxx.p4p',/information)

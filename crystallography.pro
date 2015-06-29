@@ -10,7 +10,10 @@
 ;**************************************************************************
 ;
 ; List of routines:
+
+
 ;
+; function angle_between_hkls, h1, h2, lp
 ; FUNCTION ERROR_estimates_from_d, lp, ds, hkls, sym
 ; FUNCTION ERROR_estimates_from_xyz, ub, xyzs, hkls, sym
 ; function automatic_lp_refinement, lp, ds, hkls, sym
@@ -43,6 +46,29 @@
 ; function find_closest_d, lp, d, hkl
 ; function hkl_from_ub_and_xyz, ub, xyz
 
+function ang, v, w
+; calculates  angle between two vectors
+; output in deg.
+  return, acos(dotprod(w,v)/vlength(v)/vlength(w))*!radeg
+end
+
+;-----------------------------------------
+
+function vlength, v
+; calculates length of vector
+ return, sqrt(dotprod(v,v))
+end
+
+;-----------------------------------------
+
+function dotprod, w,v
+;calculates scalar product
+ dot=0.0
+ for i=0, 2 do dot=dot+w[i]*v[i]
+ return, dot
+end
+
+;-----------------------------------------
 
 ;-----------------------------------------
 function syst_extinction, exti,hkl
@@ -61,6 +87,136 @@ l=hkl[2]
 end
 
 ;-----------------------------------------
+
+;-----------------------------------------
+
+function chi_at_phi0_from_xyz, xyz
+;--- on Jan 03, 2011 this function is being replaced by a class method with the same name
+
+; calculates the detector out of horiz. plane angle for a reflection from the Cartesian
+; coordinates of reciprocal vector
+   sd=[0., xyz[1],xyz[2]]
+   nu=ang_between_vecs(sd,[0.,-1.,0.])
+   if sd[2] lt 0.0 then y=nu else y=-nu
+ return, y
+end
+;-----------------------------------------
+
+function phi_at_bisect_from_xyz, xyz
+;--- on Jan 03, 2011 this function is being replaced by a class method with the same name
+
+; calculates the detector out of horiz. plane angle for a reflection from the Cartesian
+; coordinates of reciprocal vector
+   sd=[xyz[0],xyz[1],0]
+   nu=ang_between_vecs(sd,[0.,-1.,0.])
+   if sd[2] lt 0.0 then y=nu else y=-nu
+ return, y
+end
+;-----------------------------------------
+
+function eulerian_angles_phi0, xyz, en
+
+; four sets of setting angles are calculated,
+; two for positive 2theta nd two for negative
+; chi differs by 180
+; accessibility of the positions in dac is tested
+
+common Rota, Mtx
+
+  ttheta = 0.0
+  omega  = 0.0
+  chi    = 0.0
+  angs=fltarr(4,4)
+  tth=tth_from_en_and_d(en, 1.0/vlength(xyz))
+
+  chi=chi_at_phi0_from_xyz(xyz)
+  GenerateR, 1, chi
+  Rch=mtx
+  xyz1=Rch ## xyz
+  om=get_omega(en , xyz1)
+
+  GenerateR, 3, -om[0]
+  Rom=mtx
+  xyz2a=Rom ## xyz1
+
+  GenerateR, 3, -om[1]
+  Rom=mtx
+  xyz2b=Rom ## xyz1
+
+  if xyz2a[2] gt 0.0 then $
+  begin
+    angs[0,*]=[+tth, -om[0], chi,      0.0, 1.]
+    angs[1,*]=[-tth, -om[1], chi,      0.0, 1.]
+    angs[2,*]=[+tth,  om[1], chi+180., 0.0, 1.]
+    angs[3,*]=[-tth,  om[0], chi+180,  0.0, 1.]
+  endif else $
+  begin
+    angs[0,*]=[-tth, -om[0], chi,      0.0, 1.]
+    angs[1,*]=[+tth, -om[1], chi,      0.0, 1.]
+    angs[2,*]=[-tth,  om[1], chi+180., 0.0, 1.]
+    angs[3,*]=[+tth,  om[0], chi+180,  0.0, 1.]
+  endelse
+  print, '--------------'
+  print, angs
+  print, '--------------'
+
+  return, angs
+end
+
+;-----------------------------------------
+
+function eulerian_angles_bisect, xyz, en
+
+; four sets of setting angles are calculated,
+; two for positive 2theta nd two for negative
+; chi differs by 180
+; accessibility of the positions in dac is tested
+; assumes that 2theta, omega and phi rotate in the same direction
+
+common Rota, Mtx
+
+  ttheta = 0.0
+  omega  = 0.0
+  chi    = 0.0
+  angs=fltarr(4,5)
+  tth=tth_from_en_and_d(en, 1.0/vlength(xyz))
+
+  chi=chi_at_phi0_from_xyz(xyz)
+  GenerateR, 1, chi
+  Rch=mtx
+  xyz1=Rch ## xyz
+  om=get_omega(en , xyz1)
+
+  GenerateR, 3, -om[0]
+  Rom=mtx
+  xyz2a=Rom ## xyz1
+
+  GenerateR, 3, -om[1]
+  Rom=mtx
+  xyz2b=Rom ## xyz1
+
+  if xyz2a[2] gt 0.0 then $
+  begin
+    angs[0,*]=[+tth, +tth/2.0, chi,     -om[0]-tth/2.0, 1.]
+    angs[1,*]=[-tth, -tth/2.0, chi,     -om[1]+tth/2.0, 1.]
+    angs[2,*]=[+tth, +tth/2.0, chi+180., om[1]-tth/2.0, 1.]
+    angs[3,*]=[-tth, -tth/2.0, chi+180., om[0]+tth/2.0, 1.]
+  endif else $
+  begin
+    angs[0,*]=[-tth, -tth/2.0, chi,     -om[0]+tth/2.0, 1.]
+    angs[1,*]=[+tth, +tth/2.0, chi,     -om[1]-tth/2.0, 1.]
+    angs[2,*]=[-tth, -tth/2.0, chi+180., om[1]+tth/2.0, 1.]
+    angs[3,*]=[+tth, +tth/2.0, chi+180., om[0]-tth/2.0, 1.]
+  endelse
+  print, '--------------'
+  print, angs
+  print, '--------------'
+
+  return, angs
+end
+
+;-----------------------------------------
+
 
 function A_to_kev, la
 ; changes lamda in A to energy in keV
@@ -102,45 +258,6 @@ function en_from_xyz, xyz
 end
 ;-----------------------------------------
 
-function deltaV_calculation, lp, slp
-;lp     -- 6 element floating point array containing lattice parameters
-;slp    -- 6 element floating point array containing lattice parameter uncertainties
-;deltaV -- Floating point number representing the value of sigma V
-a=lp[0]
-b=lp[1]
-c=lp[2]
-alpha=lp[3]/!radeg
-beta=lp[4]/!radeg
-gamma=lp[5]/!radeg
-deltaa=slp[0]
-deltab=slp[1]
-deltac=slp[2]
-deltaalpha=slp[3]/!radeg
-deltabeta=slp[4]/!radeg
-deltagamma=slp[5]/!radeg
-;case (1) of
-;  (a EQ b) and (a EQ c) and (alpha EQ beta) and (alpha EQ gamma): deltaV=3.0*(a^2)*deltaa
-;  (a EQ b) and (a NE c) and (alpha EQ beta) and (alpha EQ gamma): deltaV=sqrt(((2.0*a*c*deltaa)^2)+(((a^2)*deltac)^2))
-;  (a EQ b) and (a NE c) and (alpha EQ beta) and (alpha NE gamma): deltaV=sqrt(((2.0*a*c*sin(!DPI/3)*deltaa)^2)+(((a^2)*sin(!DPI/3)*deltac)^2))
-;  (a EQ b) and (a NE c) and (alpha NE beta) and (alpha EQ gamma): deltaV=sqrt(((2.0*a*c*sin(!DPI/3)*deltaa)^2)+(((a^2)*sin(!DPI/3)*deltac)^2))
-;  (a NE b) and (a NE c) and (b NE c) and (alpha EQ beta) and (alpha EQ gamma):deltaV=sqrt(((b*c*deltaa)^2)+((a*c*deltab)^2)+((a*b*deltac)^2))
-;  (a NE b) and (a NE c) and (b NE c) and (alpha NE beta) and (alpha EQ gamma):deltaV=sqrt(((b*c*sin(beta)*deltaa)^2)+((a*c*sin(beta)*deltab)^2)+((a*b*sin(beta)*deltac)^2)+((a*b*c*cos(beta)*deltabeta)^2))
-;  (a NE b) and (a NE c) and (b NE c) and (alpha NE beta) and (alpha NE gamma) and (beta NE gamma):
-
-  deltaV=sqrt((((b*c*sqrt(2.0*cos(alpha)*cos(beta)*cos(gamma)-(cos(alpha)^2)-(cos(beta)^2)-(cos(gamma)^2)+1))*deltaa)^2)$
-                                                                                                             +(((a*c*sqrt(2.0*cos(alpha)*cos(beta)*cos(gamma)-(cos(alpha)^2)-(cos(beta)^2)-(cos(gamma)^2)+1))*deltab)^2)$
-                                                                                                             +(((a*b*sqrt(2.0*cos(alpha)*cos(beta)*cos(gamma)-(cos(alpha)^2)-(cos(beta)^2)-(cos(gamma)^2)+1))*deltac)^2)$
-                                                                                                             +((((a*b*c*(cos(alpha)*sin(alpha)-sin(alpha)*cos(beta)*cos(gamma)))$
-                                                                                                             /(sqrt(2.0*cos(alpha)*cos(beta)*cos(gamma)-(cos(alpha)^2)-(cos(beta)^2)-(cos(gamma)^2)+1)))*deltaalpha)^2)$
-                                                                                                             +((((a*b*c*(cos(beta)*sin(beta)-sin(beta)*cos(alpha)*cos(gamma)))$
-                                                                                                             /(sqrt(2.0*cos(alpha)*cos(beta)*cos(gamma)-(cos(alpha)^2)-(cos(beta)^2)-(cos(gamma)^2)+1)))*deltabeta)^2)$
-                                                                                                             +((((a*b*c*(cos(gamma)*sin(gamma)-sin(gamma)*cos(alpha)*cos(beta)))$
-                                                                                                             /(sqrt(2*cos(alpha)*cos(beta)*cos(gamma)-(cos(alpha)^2)-(cos(beta)^2)-(cos(gamma)^2)+1)))*deltagamma)^2))
-;endcase
-
-RETURN, deltaV
-end
-
 function b_from_lp, lp
 ;calculates metric matrix from lattice paramteres
 as=lp[0]
@@ -167,8 +284,12 @@ end
 
 function tth_from_en_and_d, en, d
 ; calculates bragg angle from energy and d-spc
+ n=n_elements(d)
+ t=fltarr(n)
  la=kev_to_A(En)
- return, 2.0*asin(la/(2.0*d))*!radeg
+ for i=0, n-1 do t[i]=2.0*asin(la/(2.0*d[i]))*!radeg
+ return, t
+
 end
 
 ;--------------------------------------
@@ -188,9 +309,8 @@ end
 
 function d_from_lp_and_hkl, lp, hkl
 ; calculates d-spc from lattice parameters and Miller indices
-  N=n_elements(hkl)/3
   b=b_from_lp(lp)
-  xyz=(hkl) # b
+  xyz=hkl # b
   return, 1./vlength(xyz)
 end
 
@@ -215,29 +335,6 @@ end
 
 ;-----------------------------------------
 
-function ang, v, w
-; calculates  angle between two vectors
-; output in deg.
-  return, acos(dotprod(w,v)/vlength(v)/vlength(w))*!radeg
-end
-
-;-----------------------------------------
-
-function vlength, v
-; calculates length of vector
- return, sqrt(dotprod(v,v))
-end
-
-;-----------------------------------------
-
-function dotprod, w,v
-;calculates scalar product
- dot=0.0
- for i=0, 2 do dot=dot+w[i]*v[i]
- return, dot
-end
-
-;-----------------------------------------
 
 function lp_from_ub, ub
 ;calculates lattice paramters from ub matrix
@@ -257,12 +354,9 @@ end
 
 function V_from_ub, ub
 ;calculates unit cell volume from ub matrix
-if not ((min (ub) eq 0) and (max(ub) eq 0)) then $
-begin
  gs=transpose(ub)##ub
  g=invert(gs)
  return, sqrt(determ(g))
- end
 end
 
 ;-----------------------------------------
@@ -290,6 +384,72 @@ function hkl_from_ub_and_xyz, ub, xyz
     return, hkl
 end
 
+;-----------------------------------------------------------------
+;-- Calculates the solutions of equation a*sin(x)+b*cos(x)+c=0 ---
+; INPUT:
+; a, b, c
+;
+; OUTPUT
+; two solutions in degrees
+; if no solutions, returns [-1000,-1000]
+function sincos, a,b,c
+del=-c^2+a^2+b^2
+if del lt 0 then res=[-1000,-1000] else $
+begin
+ x1=-2.0*atan((a+sqrt(del))/(c-b))
+ x2=-2.0*atan((a-sqrt(del))/(c-b))
+ res=-[x1,x2]*!radeg
+endelse
+return, res
+end
+
+
+;-----------------------------------------------------------------
+
+
+function solve_general_axis, en, xyz, gonio
+common Rota, Mtx
+ om=0;-10.0
+ chi= gonio[4]
+ GenerateR, 3, om
+ om_mtx=mtx
+ GenerateR, 1, chi
+ chi_mtx=mtx
+ A=om_mtx # chi_mtx
+ return, general_axis(invert(A),xyz,en)
+end
+
+;---
+function AA, x, x1,A
+ return, -A[1,0]*x[0]*x1[0]-A[1,1]*x[1]*x1[0]-A[1,2]*x[2]*x1[0]+A[0,0]*x[0]*x1[1]+A[0,1]*x[1]*x1[1]+A[0,2]*x[2]*x1[1]
+end
+;---
+function BB1, x, x1,A
+ return,  A[0,0]*x[0]*x1[0]+A[0,1]*x[1]*x1[0]+A[0,2]*x[2]*x1[0]+A[1,0]*x[0]*x1[1]+A[1,1]*x[1]*x1[1]+A[1,2]*x[2]*x1[1]
+end
+;---
+function CC, x, x1,A
+ return,  A[2,0]*x[0]*x1[2]+A[2,1]*x[1]*x1[2]+A[2,2]*x[2]*x1[2]
+end
+
+;-------------------
+
+function general_axis, A, vec, en
+;------------------------------------------------------------------
+; Finds phi angles at which vector Vec is in diffracting position
+; calculations allow to specify rotation matrix M that represents om-chi or om-kappa component
+;------------------------------------------------------------------
+; A   - rotation matrix for omega and chi
+; Vec - Cart. coordinates of reciprocal vec.
+; Wv  - wavelength
+
+ d=1.0/vlength(vec)
+ ttheta=tth_from_en_and_d(en,d)
+ xyz=Vec*d
+ xyz1=A#[1.0,0.0,0.0]
+ return, sincos(AA(xyz,xyz1,A),BB1(xyz,xyz1,A),CC(xyz,xyz1,A)-cos((90.0+ttheta/2.0)/!radeg))
+end
+
 ;--------------------------------------------------------------------
 function get_omega, en , xyz
 ; From xyz and energy  calculates the omega angle (in deg) at which xyz will come
@@ -299,7 +459,7 @@ common Rota, Mtx
 
  d=1./vlength(xyz)
  tthe=tth_from_en_and_d(en, d)
-
+ ;print,tthe/2.
  xyz1=xyz/vlength(xyz)
  x=xyz1[0]
  y=xyz1[1]
@@ -1159,6 +1319,29 @@ function error_estimates_text,lp, ds,hkls, sym
    return, abs(Y-F)/ERR
  END;---------------------------------------------------------
 ;---- function minimized in B refinement from d
+
+FUNCTION MYFUNCT_twist, p, X=x, Y=y, ERR=err
+  @COMMON_DATAS
+
+  ; p= lp
+  ; X=index
+  ; Y=measured d
+  common refine, ds1, hkls1
+
+   oadetector->change_twist, p[6]
+   opt->calculate_all_xyz_from_pix, oadetector, wv
+   DD=opt->build_ds()
+   Y1=DD[X]
+
+   N=n_elements(X)
+   f=fltarr(N)
+   for i=0, N-1 do F[i]=d_from_lp_and_hkl(p[0:5],hkls1[0:2,X[i]])
+   return, abs(Y1-F)/ERR
+ END;---------------------------------------------------------
+
+
+
+
   FUNCTION MYFUNCT5, p, X=x, Y=y, ERR=err
   ; p= lp
   ; X=index
@@ -1766,6 +1949,29 @@ endcase
 end
 
 ;---------------------------------------------------------------
+
+function recognize_crystal_system_from_lp, lp, lengtol, angtol
+
+ab_dif  = abs(lp[0]-lp[1])
+ac_dif  = abs(lp[0]-lp[2])
+bc_dif  = abs(lp[1]-lp[2])
+abc_dif = max([ab_dif, ac_dif, bc_dif])
+alpha_dif = abs(lp[3]-90.0)
+beta_dif  = abs(lp[4]-90.0)
+gamma_dif = abs(lp[5]-90.0)
+ang_dif=max([alpha_dif, beta_dif, gamma_dif])
+																										symm=7 ; triclinic
+if gamma_dif lt angtol and beta_dif lt angtol then 													symm=4 ; mono-a
+if alpha_dif lt angtol and gamma_dif lt angtol then 													symm=5 ; mono-b
+if alpha_dif lt angtol and beta_dif lt angtol then 													symm=6 ; mono-c
+if ang_dif lt angtol then 																				symm=3 ; orthorhombic
+if ab_dif lt lengtol and alpha_dif lt angtol and beta_dif lt angtol and abs(lp[5]-120.0) lt angtol then symm=2 ; hexagonal
+if ab_dif lt lengtol and ang_dif lt angtol then 														symm=1 ; tetragonal
+if abc_dif lt lengtol and ang_dif lt angtol then 														symm=0 ; cubic
+return, symm
+end
+
+;---------------------------------------------------------------
 function np_lp, sym
 ;- returns number of free paranmeters in constrained lp refinement
 ; 0  - triclinic
@@ -1971,6 +2177,199 @@ endcase
   endif else return, [p0,[0.,0.,0.,0.,0.,0.],N_ELEMENTS(X)]
 
 end
+
+
+
+
+function automatic_lp_refinement_twist, lp, ds, hkls, sym, excl
+; 03/04/2009 PD:
+;    -- new version of the routine avoiding TIDED due to problems with running sav files in VM w/o license
+; 09/05/2008 PD:
+;    -- restored apply_exclusions so it can work with GSE_SHELL
+; 09/05/2008 PD:
+;    -- modified error model to give more reasonable uncertainties
+
+;  refines lattice parameters against list of measured d-spc with assigned indices
+;  applies symmetry constraints
+;  estimates refinement errors
+
+  common refine, ds1, hkls1
+  N=n_elements(ds)
+  if n_elements(excl) eq 0 then $
+  begin
+    excl=lonarr(N)
+    for i=0,n-1 do excl[i]=1
+  endif
+
+  ds1=ds
+  hkls1=hkls
+  Dcal=fltarr(N)
+  for i=0, N-1 do Dcal[i]=d_from_lp_and_hkl(lp,hkls1[0:2,i])
+
+  for i=0, N-1 do if abs(dcal[i]-ds[i]) gt 0.05 then excl[i]=0
+  apply_exclusions, ds, hkls, excl
+  apply_exclusions, dcal, hkls1, excl
+  ds1=dcal
+  N=n_elements(ds)
+  ERR=fltarr(N)
+  for i=0, N-1 do ERR[i]=1.0
+  X=findgen(N)
+  ;for i=0, N-1 do ERR[i]=abs(ds1[i]-Dcal[i])
+  ;ERR=ERR>0.0001
+
+
+
+; Symmetry codes
+; 0  - triclinic
+; 11 - monoclinic a
+; 12 - monoclinic b
+; 13 - monoclinic c
+; 2  - orthorhombic
+; 3  - tetragonal
+; 4  - hexagonal
+; 5  - cubic
+
+  parinfo = replicate({value:0.D, fixed:0, limited:[0,0], $
+                       limits:[0.D,0]}, 7)
+
+case sym of
+ 0: $; - triclinic
+ begin
+ end
+ 11:$; - monoclinic a
+ begin
+   lp[4]=90.0
+   lp[5]=90.0
+   parinfo[4].fixed = 1
+   parinfo[5].fixed = 1
+ end
+ 12:$; - monoclinic b
+ begin
+   lp[3]=90.0
+   lp[5]=90.0
+   parinfo[3].fixed = 1
+   parinfo[5].fixed = 1
+ end
+ 13:$; - monoclinic c
+ begin
+   lp[3]=90.0
+   lp[4]=90.0
+   parinfo[3].fixed = 1
+   parinfo[4].fixed = 1
+ end
+ 2 :$; - orthorhombic
+ begin
+   lp[3]=90.0
+   lp[4]=90.0
+   lp[5]=90.0
+   parinfo[3].fixed = 1
+   parinfo[4].fixed = 1
+   parinfo[5].fixed = 1
+ end
+ 3 :$; - tetragonal
+ begin
+   lp[3]=90.0
+   lp[4]=90.0
+   lp[5]=90.0
+   parinfo[3].fixed = 1
+   parinfo[4].fixed = 1
+   parinfo[5].fixed = 1
+ end
+ 4 :$; - hexagonal
+ begin
+   lp[3]=90.0
+   lp[4]=90.0
+   lp[5]=120.0
+   parinfo[3].fixed = 1
+   parinfo[4].fixed = 1
+   parinfo[5].fixed = 1
+ end
+ 5 :$; - cubic
+ begin
+   lp[3]=90.0
+   lp[4]=90.0
+   lp[5]=90.0
+   parinfo[3].fixed = 1
+   parinfo[4].fixed = 1
+   parinfo[5].fixed = 1
+ end
+endcase
+
+   parinfo[0].limited(0) = 1
+   parinfo[0].limited(1) = 1
+   parinfo[0].limits(0) = lP[0]-lP[0]/10.
+   parinfo[0].limits(1) = lP[0]+lP[0]/10.
+
+   parinfo[1].limited(0) = 1
+   parinfo[1].limited(1) = 1
+   parinfo[1].limits(0) = lP[1]-lP[1]/10.
+   parinfo[1].limits(1) = lP[1]+lP[1]/10.
+
+   parinfo[2].limited(0) = 1
+   parinfo[2].limited(1) = 1
+   parinfo[2].limits(0) = lP[2]-lP[2]/10.
+   parinfo[2].limits(1) = lP[2]+lP[2]/10.
+
+   parinfo[6].limited(0) = 1
+   parinfo[6].limited(1) = 1
+   parinfo[6].limits(0) = -2.
+   parinfo[6].limits(1) = 2.
+
+
+   p0 = [lp,0.0]
+   fa = {X:x, Y:ds, ERR:err}
+   print, n_elements(where(excl ne 1))
+
+  case sym of
+  3:$ ; tetragonal
+     begin
+       parinfo=parinfo[1:6]
+       p0=p0[1:6]
+       p = mpfit('MYFUNCT5', p0, functargs=fa,PERROR=PE, PARINFO=parinfo, BESTNORM=bestnorm)
+       if n_elements(PE) gt 0 then $
+       begin
+        p=[p[0],p]
+        pe=[pe[0],pe]
+       end
+     end
+  4:$ ; hexagonal
+     begin
+       parinfo=parinfo[1:6]
+       p0=p0[1:6]
+       p = mpfit('MYFUNCT5', p0, functargs=fa,PERROR=PE, PARINFO=parinfo, BESTNORM=bestnorm)
+       if n_elements(PE) gt 0 then $
+       begin
+        p=[p[0],p]
+        pe=[pe[0],pe]
+       end
+     end
+  5:$ ; cubic
+     begin
+       parinfo=parinfo[2:6]
+       p0=p0[2:6]
+       p = mpfit('MYFUNCT4', p0, functargs=fa,PERROR=PE, PARINFO=parinfo, BESTNORM=bestnorm)
+       if n_elements(PE) gt 0 then $
+       begin
+        p=[p[0],p[0],p]
+        pe=[pe[0],pe[0],pe]
+       end
+     end
+    else:$
+       p = mpfit('MYFUNCT_twist', p0, functargs=fa,PERROR=PE, PARINFO=parinfo, BESTNORM=bestnorm)
+  endcase
+
+  lp=p0
+  if n_elements(PE) gt 0 then $
+  begin
+  DOF     = N_ELEMENTS(X) - np_lp(sym) ; deg of freedom
+  PCERROR = PE * SQRT(BESTNORM / DOF)   ; scaled uncertainties
+  ; PCERROR = PE
+  return, [p,PCERROR,N_ELEMENTS(X)]
+  endif else return, [p0,[0.,0.,0.,0.,0.,0.],N_ELEMENTS(X)]
+
+end
+
+
 ;---------------------------------------------------------------
 function automatic_lp_refinement1, lp, ds, hkls, sym, excl
 
@@ -2235,7 +2634,8 @@ end
 function open_UB, fname
 COMMON pat, path
   ub=fltarr(3,3)
-  if n_params() eq 0 then fname=dialog_pickfile(FILTER='*.ub', /READ, PATH=path)
+  if n_params() eq 0 then $
+  fname=dialog_pickfile(FILTER='*.ub', /READ, PATH=path)
   if fname ne '' then $
   begin
   free_lun, 2
@@ -2279,7 +2679,6 @@ end
 
 
 pro save_UB, ub, fname
-  if n_params() eq 1 then fname=dialog_pickfile(/read, filter='*.ub', path=path)
   if fname ne '' then $
   begin
    free_lun, 2
@@ -2291,8 +2690,6 @@ pro save_UB, ub, fname
    free_lun, 2
   endif
 end
-
-;----------------------------------
 
 pro crystallography
 end
