@@ -9,6 +9,7 @@ function cell_now_solution_n, n, cell_now_path
 ;@common_datas
 ;fl=cell_now_dir+'cell_now.exe'
 cell_now_path=cell_now_path+'\'
+cell_now_path='C:\Users\harold\projects\GSE_ADA_SAVE\cell_now\'
 fl=cell_now_path+'cell_now.exe'
 re=file_info(fl)
 if not(re.exists) then begin
@@ -73,7 +74,7 @@ end
 
 ;--------------------------------
 pro read_cells_from_cellnow, lp, v, l, fom, cell_now_dir
-	@COMMON_DATAS
+;@COMMON_DATAS
    lp=fltarr(6)
    lp0=fltarr(6)
    V=0.0
@@ -131,6 +132,63 @@ pro read_cells_from_cellnow, lp, v, l, fom, cell_now_dir
    print, v
    print, l
    print, fom
+
+end
+
+;---------------------------
+function ReadUBfrom_p4p, res
+ub=fltarr(3,3)
+	if res ne '' then $
+	begin
+ 		FREE_LUN,2
+ 		OPENR, 2, res
+ 		str='       '
+ 		str1=''
+ 		str2=''
+ 		str3=''
+ 		; search for beginning of reflection block
+ 		while str ne 'CELLSD' and not eof(2) do $
+   			readf, 2, str, format='(A6)'
+ 		if not eof(2) then $
+ 		begin
+   			readf, 2, str1
+			readf, 2, str2
+			readf, 2, str3
+     		CLOSE, 2
+    		FREE_LUN,2
+    		ub[0,0]=float(strmid(str1, 7,16))
+    		ub[1,0]=float(strmid(str1, 23,16))
+    		ub[2,0]=float(strmid(str1, 39,16))
+
+    		ub[0,1]=float(strmid(str2, 7,16))
+    		ub[1,1]=float(strmid(str2, 23,16))
+    		ub[2,1]=float(strmid(str2, 39,16))
+
+    		ub[0,2]=float(strmid(str3, 7,16))
+    		ub[1,2]=float(strmid(str3, 23,16))
+    		ub[2,2]=float(strmid(str3, 39,16))
+ 		endif
+ 		endif
+ 		return, ub
+end
+;--------------
+
+;-----------------------
+
+function symcodes, x
+case x of
+
+;- returns number of free paranmeters in constrained lp refinement
+7: s= 0 ; - triclinic
+4: s= 11; - monoclinic a
+5: s= 12; - monoclinic b
+6: s= 13; - monoclinic c
+3: s= 2 ; - orthorhombic
+2: s= 3 ; - tetragonal
+1: s= 4 ; - hexagonal
+0: s=5  ;- cubic
+endcase
+return, s
 
 end
 
@@ -2295,7 +2353,8 @@ end
 		dirs = cellnowpath
     	ub=ReadUBfrom_p4p(dirs+'1.p4p')
     	lp= lp_from_ub(UB)
-    	symm=symcodes(li)
+    	stop
+    	symm=symcodes(sel1)
     	tol=0.1
     	optable1->select_indexable, ub, tol
 
