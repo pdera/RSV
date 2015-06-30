@@ -9,7 +9,7 @@ function cell_now_solution_n, n, cell_now_path
 ;@common_datas
 ;fl=cell_now_dir+'cell_now.exe'
 cell_now_path=cell_now_path+'\'
-cell_now_path='C:\Users\harold\projects\GSE_ADA_SAVE\cell_now\'
+
 fl=cell_now_path+'cell_now.exe'
 re=file_info(fl)
 if not(re.exists) then begin
@@ -192,7 +192,41 @@ return, s
 
 end
 
+;---------------------------
 
+
+function Refine_B_against_d, ub, optable1, sym
+
+       ;sym=2 for orthorhombic
+
+       ds=optable1->BUILD_d_list()
+       hkls=optable1->BUILD_hkls()
+       lp=lp_from_ub(ub)
+       lp1=automatic_lp_refinement3(lp, ds, hkls, sym)
+       lp=lp_from_ub(ub)
+       ;change ub matrix
+       b1=b_from_lp(lp1)
+       b0=b_from_lp(lp)
+       u0=ub ## invert(b0)
+       ub=u0 ## b1
+       lp1[0:5]=lp_from_ub(ub)
+       print, 'refined cell parameters', lp1
+       ddd=[-0.005, 0.005] ;$$$$$$$$$$$$$$$$$$$$$
+       lp=lp_from_ub(ub)
+       pt=optable1->get_object()
+       N=pt.peakno
+       ds=fltarr(N)
+       dsc=fltarr(N)
+       a=fltarr(N)
+       ss=optable1->calculate_Ddd(lp)
+       sel1=where(ss le ddd[0])
+       sel2=where(ss ge ddd[1])
+       if sel1[0] ne -1 then optable1->select_peaks, sel1
+       if sel2[0] ne -1 then optable1->select_peaks, sel2
+       print, n_elements(sel1)+n_elements(sel2), 'peaks selected'
+       return, lp1
+
+end
 
 function get_bravis_type
 COMMON BAse_bra, WID_BUTTON_P, WID_BUTTON_R, WID_BUTTON_I, WID_BUTTON_F, WID_BUTTON_A, WID_BUTTON_B, WID_BUTTON_C
@@ -239,7 +273,7 @@ end
 
 
 pro save_UB, ub
-COMMON pat, path
+COMMON pat, path, cellnowpath
   fname=dialog_pickfile(FILTER='*.ub', /WRITE, PATH=path,  DEFAULT_EXTENSION='ub')
   free_lun, 2
   if fname ne '' then $
@@ -679,10 +713,11 @@ COMMON alternative, AWID_BUTTON_choose, AWID_BUTTON_Close, AWID_LIST_0
 COMMON  ind_sol, solu, solus, soluno
 COMMON ind_alt, altsols1, altsolno1
 COMMON DC_controls
-COMMON pat, path
+COMMON pat, path, cellnowpath
 COMMON status, nopeaktable
 COMMON ind_tol, WID_TEXT_indthr, WID_TEXT_PD1
 common uc_selection, sel, sel1, li, dl, lpss
+
 
  WIDGET_CONTROL, ev.id,  GET_UVALUE=uval
 
@@ -2304,18 +2339,18 @@ end
 	  ;common uc_selection, sel, sel1, li, dl, lpss
       fn=optable1->save_p4p('xxx.p4p')
       Re=dialog_message('Current peak table has been saved in file xxx.p4p',/information)
-      test=file_info('./cell_now.exe')
+      test=file_info(cellnowpath+'/cell_now.exe')
 
       if test.exists eq 1 then $
       begin
           ; export current peak table as p4p file
           ; advise about the name and location of this file
-          cellnowpath = file_dirname('./cell_now.exe')
+
           cellnow = cellnowpath+'/cell_now,exe'
 
           ; offer to read ub matrix from result p4p file
           ; louch a browser to pick up that result file
-          spawn, cellnow, /noshell
+          ; spawn, cellnow, /noshell
       ;endif else re=dialog_message('You need to copy cell_now.exe to RSV program directory')
       endif else begin
       		Re = dialog_message('Cell_now not found, Please select the cell_now executable',/information)
@@ -2353,11 +2388,17 @@ end
 		dirs = cellnowpath
     	ub=ReadUBfrom_p4p(dirs+'1.p4p')
     	lp= lp_from_ub(UB)
-    	stop
+    	;stop
     	symm=symcodes(sel1)
     	tol=0.1
     	optable1->select_indexable, ub, tol
+    	lp=Refine_B_against_d(ub, optable1, symm)
+    	;opt->delete_selected
+    	lp=Refine_B_against_d(ub, optable1, symm)
+    	;opt->delete_selected
 
+		print_UB_and_lp, ub,lp,WID_LIST_5, optable1
+        draw_cell,WID_DRAW_0,UB[0,0:2],UB[1,0:2],UB[2,0:2],ws
 
 
 	  endif

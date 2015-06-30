@@ -9,7 +9,7 @@ COMMON Hello_controls, WID_BUTTON_Hello_start
 common Rot,Rotations
 COMMON peaktable_objects, optable1,optable2, optable3, optable0
 COMMON settings, ws
-COMMON pat, path
+COMMON pat, path, cellnowpath
 
 COMMON  ind_sol, solu, solus, soluno
 common params, inpar
@@ -28,7 +28,7 @@ nopeaktable=1
 
  rotations=[[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]
  ws={window_settings, xy:intarr(2), scl : 0.0, control:0, rotation:0, colors:[0,0,0,0], circ:0}
-
+ cellnowpath = 'C:/Users/harold/Projects/GSE_ADA_save/cell_now/'
  ; graphic window settings
 
  ws.xy      = [0,0]

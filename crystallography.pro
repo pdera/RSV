@@ -2632,7 +2632,7 @@ end
 ;----------------------------------
 
 function open_UB, fname
-COMMON pat, path
+COMMON pat, path, cellnowpath
   ub=fltarr(3,3)
   if n_params() eq 0 then $
   fname=dialog_pickfile(FILTER='*.ub', /READ, PATH=path)
